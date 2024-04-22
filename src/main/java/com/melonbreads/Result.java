@@ -1,11 +1,15 @@
 package com.melonbreads;
 
+import com.melonbreads.function.ThrowingFunction;
 import com.melonbreads.function.ThrowingSupplier;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
-public final class Result<V, E> {
+public final class Result<V, E extends Throwable> {
+
     private final V value;
 
     private final E error;
@@ -32,6 +36,38 @@ public final class Result<V, E> {
         }
     }
 
+    public static <I, V, E extends Throwable> Function<I, Result<V, E>> forFunction(ThrowingFunction<I, V, E> function) {
+        return (i -> {
+            try {
+                return Result.ok(function.apply(i));
+            } catch (Throwable e) {
+                @SuppressWarnings("unchecked") E error = (E) e;
+                return Result.nok(error);
+            }
+        });
+    }
+
+    public <O> Result<O, E> map(Function<V, O> function) {
+        if (value != null) {
+            return Result.ok(function.apply(value));
+        }
+        return Result.nok(error);
+    }
+
+    public <O extends Throwable> Result<V, O> orElseThrow(Function<E, O> function) {
+        if (error != null) {
+            return Result.nok(function.apply(error));
+        }
+        return Result.ok(value);
+    }
+
+    public Optional<V> toOptional() {
+        if (value != null) {
+            return Optional.of(value);
+        }
+        return Optional.empty();
+    }
+
     public void ifSuccess(Consumer<V> consumer) {
         if (value != null) {
             consumer.accept(value);
@@ -42,6 +78,21 @@ public final class Result<V, E> {
         if (error != null) {
             consumer.accept(error);
         }
+    }
+
+    public void ifSuccessOrElse(Consumer<V> onSuccess, Consumer<E> onError) {
+        if (value != null) {
+            onSuccess.accept(value);
+        } else {
+            onError.accept(error);
+        }
+    }
+
+    public V otherwise(V alternative) {
+        if (value == null) {
+            return alternative;
+        }
+        return value;
     }
 
     public V getValue() {
