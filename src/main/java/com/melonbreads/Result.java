@@ -1,6 +1,7 @@
 package com.melonbreads;
 
 import com.melonbreads.function.ThrowingFunction;
+import com.melonbreads.function.ThrowingRunnable;
 import com.melonbreads.function.ThrowingSupplier;
 
 import java.util.Objects;
@@ -25,6 +26,16 @@ public final class Result<V, E extends Throwable> {
 
     public static <V, E extends Throwable> Result<V, E> nok(E error) {
         return new Result<>(null, error);
+    }
+
+    public static <E extends Throwable> Result<Void, E> ofRunnable(ThrowingRunnable<E> runnable) {
+        try {
+            runnable.run();
+            return Result.ok(null);
+        } catch (Throwable e) {
+            @SuppressWarnings("unchecked") E error = (E) e;
+            return Result.nok(error);
+        }
     }
 
     public static <V, E extends Throwable> Result<V, E> ofSupplier(ThrowingSupplier<V, E> supplier) {
@@ -66,6 +77,14 @@ public final class Result<V, E extends Throwable> {
             return Optional.of(value);
         }
         return Optional.empty();
+    }
+
+    public boolean isSuccess() {
+        return value != null;
+    }
+
+    public boolean isError() {
+        return error != null;
     }
 
     public void ifSuccess(Consumer<V> consumer) {
